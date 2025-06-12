@@ -33,11 +33,3 @@ Thumbs.db
 
 # Logs
 *.log
-
-# Large model files (>50MB)
-*.pt
-*float32.tflite
-*yolo11l-pose_float16.tflite
-*yolo11x-pose_float16.tflite
-*yolov8l-cls_float16.tflite
-*yolov8x-cls_float16.tflite
