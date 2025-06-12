@@ -1,0 +1,4 @@
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- files 디렉터리 내의 모든 파일들을 공유할 수 있도록 설정 -->
+    <files-path name="shared_files" path="." />
+</paths>
