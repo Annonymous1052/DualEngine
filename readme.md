@@ -114,7 +114,7 @@ It should be placed in app/assets/ along with other models.
    - Enable root access for frequency control
 
 
-![view1](view1.jpg)
+<img src="view1.jpg" width="400" alt="view1">
 
 Once you push the "Run App" button, it will start to load all DNN models into memory.
 
@@ -124,7 +124,7 @@ It will take a few seconds.
 
 You can decide the 1. duration of the test, 2. (optional) {start time, memory consumption, duration} of 2 CPU/memory load.
 
-![view2](view2.jpg)
+<img src="view2.jpg" width="400" alt="view2">
 
 After filling in the designated forms, you can start the test by pushing the start button.
 
