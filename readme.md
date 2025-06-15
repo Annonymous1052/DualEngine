@@ -1,4 +1,4 @@
-# DualEngine: AI-Powered Mobile Edge Computing with DQN Optimization
+# DualEngine: Thermal-Aware Co-Execution of On-device Processing and MEC Offloading for Mobile Artificial Intelligence
 
 [![Android](https://img.shields.io/badge/Platform-Android-green.svg)](https://developer.android.com/)
 [![Kotlin](https://img.shields.io/badge/Language-Kotlin-blue.svg)](https://kotlinlang.org/)
@@ -7,7 +7,7 @@
 [![TensorFlow Lite](https://img.shields.io/badge/AI-TensorFlow%20Lite-orange.svg)](https://www.tensorflow.org/lite)
 [![PyTorch](https://img.shields.io/badge/AI-PyTorch-red.svg)](https://pytorch.org/)
 
-This repository is the official implementation of "DualEngine: AI-Powered Mobile Edge Computing with DQN Optimization," submitted to MICRO 2025.
+This repository is the official implementation of "DualEngine: Thermal-Aware Co-Execution of On-device Processing and MEC Offloading for Mobile Artificial Intelligence," submitted to MICRO 2025.
 
 ##  Abstract
 
@@ -162,11 +162,21 @@ var epsilonDecay = 0.95f  // Decay ratio of epsilon
 var lr = 0.2f             // learning rate
 ```
 
+### Tips for configuration
+You should be CAREFUL changing parameters. 
+
+There are always trade-offs for each of them. 
+
+For example, high lambda (thermal weight) brings higher thermal stability, but might lower FPS performance. 
+
+The graph below shows some insight for changing parameters. 
+
+![parameter](parameter_changing.jpg)
 
 ##  Acknowledgments
-stree-ng
-
-YOLO
+[stree-ng](https://github.com/ColinIanKing/stress-ng) 
+[YOLO](https://docs.ultralytics.com/) 
+[MobileNet](https://github.com/tensorflow/models/tree/master/research/slim/nets/mobilenet)
 
 
 
