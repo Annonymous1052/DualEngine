@@ -135,7 +135,34 @@ Remember, the server should be showing `waiting connection...`
 Once the mobile device finishes the test, you can send the result (.csv file containing FPS, temperatures, memories, and so on) and the trained DRL file (weight, bias) 
 
 
+## State / Action / Result
 
+We provide detailed examples of state, action, reward to improve reproducibility and help customization. 
+
+```kotlin
+// state = (temperature of {CPU core1, CPU core2, GPU, communication modem} in celcius = [h_CPU0, h_CPU4, h_GPU, h_5G], ...  // ex) [50f, 50f, 52f, 60f]
+//          available memory in MB [m_available], ... // ex) [500] 
+//          clock frequency levels [cpu0, cpu4, gpu], ... // ex) [0f, 0f, 0f], each corresponds to actual clock freqeuencies. cpu0 0f => cpu0_list[0] = 754000kHz
+//          offloading rate and offladed FPS [r, r_sent], ... // ex) [0f, 15f], offloading rate corresponds to predefined offloading rates. r 0f => off_list[0] = 4
+//          preloaded DNN models [l1, l2], ... // ex) [0f, 1f] means medium model is not loaded, and large model is loaded
+//          current DNN model in use [model], ... // ex) [2f] means large model is used in current time slot
+//          FPS processed with on-device AI [FPSlocal], ... /// ex) [10f]
+//          average accuracy of current time slot [acc] ex) [77f]
+var state = floatArrayOf(h_CPU0, h_CPU4, h_GPU, h_5G, m_available, cpu0, cpu4, gpu, r, r_sent, l1, l2, model, FPSlocal, acc)
+
+// action = Our action space size is currently 81 = CPU clock (3) * GPU clock (3) * offloading rate (3) * model selection (3) 
+//          DQN model outputs number between 0~80. We interpret the output in ternary manner. 
+//          If output is 0, CPU clock (0), GPU clock (0), offloading rate (0), model selection (0)
+//          If output is 3, CPU clock (0), GPU clock (0), offloading rate (1), model selection (0)
+//          Each clock / offloading rate / model selection follows its own list. For example CPU clock 0 = cpu0_list[0] = 754000kHz
+var action = getAction(state)  // number between 0~80.
+
+// reward = After running action, we calculate reward. 
+//          getReward outputs = [Total reward, heat reward, memory reward, FPS reward, accuracy reward, average accuracy]
+//          Total reward is for DQN
+//          Others are for exploration safety strategy
+var reward = getReward(state)  
+```
 
 ##  Parameter configuration
 
