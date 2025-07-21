@@ -189,6 +189,14 @@ var epsilonDecay = 0.95f  // Decay ratio of epsilon
 var lr = 0.2f             // learning rate
 ```
 
+Below is the list of devices we used for experiment. 
+| &nbsp;&nbsp;&nbsp;&nbsp;Device&nbsp;&nbsp;&nbsp;&nbsp;     | CPU | GPU | RAM (GB) | 
+|-----------|-------|---------|----|
+| S21 Ultra | ARM (2.91+2.81+2.21)GHz      | ARM 858 MHz        | 12               | 
+| Quantum 2 | Qualcomm Kryo (2.96+2.42+1.79)GHz  | Qualcomm Adreno 675MHz        | 6  |
+| A12 | ARM (2.3+1.8)GHz       | IT PowerVR 680MHz        | 3               | 
+
+
 ### Tips for configuration
 You should be CAREFUL changing parameters. 
 
