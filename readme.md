@@ -198,11 +198,16 @@ Below is the list of devices we used for experiment.
 
 ### Tips for threshold setting 
 We should conduct a simple experiment to assess the capacity of the mobile device.  
-The FPS threshold, `targetFPS`, is determined as the average FPS achieved when the AI application is executed under the moderate settings: the mid-level CPU/GPU clock frequencies, the medium-sized DNN model, and the mid-level offloading rate, on a stable smartphone before thermal throttling happens in a room temperature.  
+The FPS threshold, `targetFPS`, is determined as the average FPS achieved when the AI application is executed under the moderate settings: the mid-level CPU/GPU clock frequencies, the medium-sized DNN model, and the mid-level offloading rate, on a stable smartphone before thermal throttling happens in a room temperature. 
+
 The thermal threshold, `h_th`, is determined as the minimum temperature among components (i.e., CPU, GPU, and modem) at which the actual CPU/GPU clock frequency falls below the configured clock frequency of the algorithm or when 5G communication switches to LTE under maximum CPU/GPU clock frequencies and offloading rates. 
+
 The memory threshold, `m_th`, is determined as the amount of available memory at which the application begins utilizing swap memory.
+
 We conduct the test by gradually increasing the memory load in 100 MB increments (e.g., 100 MB, 200 MB, etc). 
+
 Based on our measurements, we set `targetFPS=20`, `h_th = 62`, and `m_th = 500` for Samsung S21 Ultra and Quantum 2. 
+
 For A12, we set `targetFPS=8`, `h_th = 62`, and `m_th = 500`
 
 ### Tips for hyperparameter configuration
