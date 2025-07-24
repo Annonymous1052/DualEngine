@@ -7,7 +7,7 @@
 [![TensorFlow Lite](https://img.shields.io/badge/AI-TensorFlow%20Lite-orange.svg)](https://www.tensorflow.org/lite)
 [![PyTorch](https://img.shields.io/badge/AI-PyTorch-red.svg)](https://pytorch.org/)
 
-This repository is the official implementation of "DualEngine: Thermal-Aware Co-Execution of On-device Processing and MEC Offloading for Mobile Artificial Intelligence," submitted to MICRO 2025.
+This repository is the official implementation of "DualEngine: Thermal-Aware Co-Execution of On-device Processing and MEC Offloading for Mobile Artificial Intelligence," submitted to IEEE INFOCOM 2026.
 
 ##  Abstract
 
@@ -196,9 +196,17 @@ Below is the list of devices we used for experiment.
 | Quantum 2 | Qualcomm Kryo (2.96+2.42+1.79)GHz  | Qualcomm Adreno 675MHz        | 6  |
 | A12 | ARM (2.3+1.8)GHz       | IT PowerVR 680MHz        | 3               | 
 
+### Tips for threshold setting 
+We should conduct a simple experiment to assess the capacity of the mobile device.  
+The FPS threshold, `targetFPS`, is determined as the average FPS achieved when the AI application is executed under the moderate settings: the mid-level CPU/GPU clock frequencies, the medium-sized DNN model, and the mid-level offloading rate, on a stable smartphone before thermal throttling happens in a room temperature.  
+The thermal threshold, `h_th`, is determined as the minimum temperature among components (i.e., CPU, GPU, and modem) at which the actual CPU/GPU clock frequency falls below the configured clock frequency of the algorithm or when 5G communication switches to LTE under maximum CPU/GPU clock frequencies and offloading rates. 
+The memory threshold, `m_th`, is determined as the amount of available memory at which the application begins utilizing swap memory.
+We conduct the test by gradually increasing the memory load in 100 MB increments (e.g., 100 MB, 200 MB, etc). 
+Based on our measurements, we set `targetFPS=20`, `h_th = 62`, and `m_th = 500` for Samsung S21 Ultra and Quantum 2. 
+For A12, we set `targetFPS=8`, `h_th = 62`, and `m_th = 500`
 
-### Tips for configuration
-You should be CAREFUL changing parameters. 
+### Tips for hyperparameter configuration
+You should be CAREFUL changing hyperparameters (i.e., lambda, kappa, mu, nu). 
 
 There are always trade-offs for each of them. 
 
