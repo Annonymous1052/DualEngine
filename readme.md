@@ -58,6 +58,7 @@ To run the program, we need _both of them_.
 - **Android SDK**: API level 32 (Android 12.0), Kernel version 5.4
 - **Device Requirements**: 
   - Root access (for CPU/GPU frequency scaling and resource monitoring)
+  - Tensorflow-lite 2.13.0
 
 ### (Optional) Power logging using Monsoon power monitor
 First, you need to remove the phone battery and connect it to Monsoon like the picture below. 
