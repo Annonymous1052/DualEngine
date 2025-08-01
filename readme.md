@@ -1,4 +1,4 @@
-# DualEngine: Thermal-Aware Co-Execution of On-device Processing and MEC Offloading for Mobile Artificial Intelligence
+# DualEngine: A Thermal-Aware Vision Inference Framework via Mobile and Cloud Co-Execution
 
 [![Android](https://img.shields.io/badge/Platform-Android-green.svg)](https://developer.android.com/)
 [![Kotlin](https://img.shields.io/badge/Language-Kotlin-blue.svg)](https://kotlinlang.org/)
@@ -7,7 +7,7 @@
 [![TensorFlow Lite](https://img.shields.io/badge/AI-TensorFlow%20Lite-orange.svg)](https://www.tensorflow.org/lite)
 [![PyTorch](https://img.shields.io/badge/AI-PyTorch-red.svg)](https://pytorch.org/)
 
-This repository is the official implementation of "DualEngine: Thermal-Aware Co-Execution of On-device Processing and MEC Offloading for Mobile Artificial Intelligence," submitted to IEEE INFOCOM 2026.
+This repository is the official implementation of "DualEngine: A Thermal-Aware Vision Inference Framework via Mobile and Cloud Co-Execution," submitted to IEEE INFOCOM 2026.
 
 ##  Abstract
 
