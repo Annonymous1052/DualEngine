@@ -21,6 +21,8 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.yield
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.SendChannel
@@ -43,6 +45,7 @@ import java.io.OutputStreamWriter
 import java.io.PrintWriter
 import java.net.Socket
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.Collections.max
 import kotlin.math.tanh
 import kotlin.random.Random
@@ -168,6 +171,9 @@ class PhotoActivity : BaseActivity() {
     var lrmin = 0.0001f
     val num_sample = 1 // number of sample to add upon low reward
 
+    private val frameScheduler = FrameScheduler()
+    private val imageSourcePath = "/data/local/tmp/cat5.jpg"
+
     val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission())
     { isGranted: Boolean ->
         if (isGranted) {
@@ -215,6 +221,12 @@ class PhotoActivity : BaseActivity() {
             var expTime = binding.editTextTime.text.toString().toInt()
             val addr = "192.168.0.2" //"192.168.0.2" "14.4.61.130"
             Log.d("TAG", "run $expTime second")
+            frameScheduler.resetSessionCounters()
+            frameScheduler.updateControl(
+                0,
+                cpu0_list[0].toLong(),
+                gpu_list[0].toLong()
+            )
 
             // Communication socket for offloading
             val thread = SocketThread(addr, expTime)
@@ -608,36 +620,42 @@ class PhotoActivity : BaseActivity() {
         return 0
     }
     suspend fun CoroutineScope.imageCoroutine(channelInf: SendChannel<TensorImage>, channelSend: SendChannel<String>, channelFinish: ReceiveChannel<Int>){
-        // Role: Preprocess and supply images for on-device AI and MEC offloading
-        // Interactions:
-        // Supply images for on-device AI processing through channelInf
-        // Supply images for MEC offloading processing through channelSend
-        // Items that need modification: X
+        // Co-execution: on-device and offload pumps run in parallel (pipeline).
+        // Frame scheduler (§IV-E) gates each pump by TD/(TD+TL).
+        val cachedB64 = readFileToBase64(imageSourcePath)
+        if (cachedB64.isEmpty()) {
+            Log.e("FrameScheduler", "missing image: $imageSourcePath")
+            return
+        }
 
-        runBlocking {
-            launch {// send to server
-                var inputImage = readFileToBase64("/data/local/tmp/cat5.jpg")
-                while (channelFinish.isEmpty) {channelSend.send(inputImage)}
-            }
-            launch {// send to local
+        coroutineScope {
+            launch {
                 while (channelFinish.isEmpty) {
-                    var inputImage = readFileToBase64("/data/local/tmp/cat5.jpg")
-                    val imageBytes = Base64.decode(inputImage, 0)
-                    val image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-                    var inputImage2 = classifier_s.loadImage(image)
-                    channelInf.send(inputImage2)
+                    if (frameScheduler.shouldRouteToOffload()) {
+                        channelSend.send(cachedB64)
+                    } else {
+                        yield()
+                    }
+                }
+            }
+            launch {
+                while (channelFinish.isEmpty) {
+                    if (!frameScheduler.shouldRouteToOffload()) {
+                        val imageBytes = Base64.decode(cachedB64, 0)
+                        val image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                        channelInf.send(classifier_s.loadImage(image))
+                    } else {
+                        yield()
+                    }
                 }
             }
         }
-        //Cleanup after experiment ends
-        var inputImage = readFileToBase64("/data/local/tmp/cat5.jpg")
-        val imageBytes = Base64.decode(inputImage, 0)
-        val image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-        var inputImage2 = classifier_s.loadImage(image)  // Especially this part.
 
         delay(1000)
-        channelSend.send(inputImage)
-        channelInf.send(inputImage2)
+        channelSend.send(cachedB64)
+        val imageBytes = Base64.decode(cachedB64, 0)
+        val image = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+        channelInf.send(classifier_s.loadImage(image))
 
         Log.d("Finished", "imageCoroutine finished")
     }
@@ -714,70 +732,83 @@ class PhotoActivity : BaseActivity() {
         Log.d("Finished", "inferCoroutine finished")
     }
     suspend fun CoroutineScope.commCoroutine(host: String, channelImage: ReceiveChannel<String>, channelFPS: SendChannel<String>, channelR: ReceiveChannel<Int>, channelStart: ReceiveChannel<Int>, channelFinish: ReceiveChannel<Int>){
-        // Role: MEC offloading. Send images to server.
-        // Interactions: From imageCoroutine through channelImage
-        //
+        // MEC offloading: send pipeline + background ACK reader (co-execution with on-device).
         try {
-            val port = 5000 //Port number same as server side
-            Log.d("testLog","host: $host")
-//                var testResult = executeCommand("adb ")
+            val port = 5000
+            Log.d("testLog", "host: $host")
             val socket = Socket(host, port)
             val out: OutputStream = socket.getOutputStream()
             val writer = PrintWriter(OutputStreamWriter(out, StandardCharsets.UTF_8))
             val input: InputStream = socket.getInputStream()
             val reader = BufferedReader(InputStreamReader(input, StandardCharsets.UTF_8))
-            Log.d("testLog","server connected!")
-            // Send image
+            Log.d("testLog", "server connected!")
+
             var b64Image = channelImage.receive()
             var imageSize = b64Image.utf8Size()
-
             Log.d("testLog", "imagesize : $imageSize")
             writer.println(imageSize)
             writer.flush()
-            var response = reader.readLine() // Get response "ok"
+            var response = reader.readLine()
             Log.d("testLog", "response : $response")
 
             var r = 15
-            var FPS = 0
+            val fpsOffCompleted = AtomicInteger(0)
+            var sendsThisSlot = 0
+            var prev = SystemClock.uptimeMillis()
 
-            while(channelStart.isEmpty){
+            while (channelStart.isEmpty) {
                 delay(10)
             }
-            var startTime = SystemClock.uptimeMillis()
-            var prev = startTime
 
-            while(channelFinish.isEmpty){
-                // from source
-                if (FPS == r) {
-                    delay(10)
-                } else {
-                    b64Image = channelImage.receive()
-
-                    writer.println(b64Image)
-                    writer.flush()
-                    FPS += 1
+            coroutineScope {
+                launch {
+                    while (channelFinish.isEmpty) {
+                        val ack = reader.readLine() ?: break
+                        if (ack.startsWith("DONE")) {
+                            if (frameScheduler.onOffloadAck()) {
+                                fpsOffCompleted.incrementAndGet()
+                            }
+                        } else {
+                            Log.w("FrameScheduler", "unexpected server ack: $ack")
+                        }
+                    }
                 }
 
-                if (SystemClock.uptimeMillis() - prev > timeslotSize) {
-//                    var timeStamp = ((SystemClock.uptimeMillis()-startTime)/1000.0).toString()
-                    var FPSsend = FPS/((SystemClock.uptimeMillis()-prev)/1000)
-                    var startChannel = SystemClock.uptimeMillis()
-                    channelFPS.send(FPSsend.toString())
-                    var endChannel = SystemClock.uptimeMillis() - startChannel
-                    r=channelR.receive()*timeslotSize/1000  // noR
-                    Log.d("FPS", "FPSOff: $FPSsend")
-                    Log.d("Channel", "channelFPS send and receive latency at commCoroutine: $endChannel")
-                    prev = SystemClock.uptimeMillis()
-                    FPS = 0
+                launch {
+                    while (channelFinish.isEmpty) {
+                        if (sendsThisSlot >= r) {
+                            delay(10)
+                        } else {
+                            b64Image = channelImage.receive()
+                            frameScheduler.onOffloadSend()
+                            writer.println(b64Image)
+                            writer.flush()
+                            sendsThisSlot += 1
+                        }
+
+                        if (SystemClock.uptimeMillis() - prev > timeslotSize) {
+                            frameScheduler.beginTimeslot()
+                            val slotMs = SystemClock.uptimeMillis() - prev
+                            val fpsSend = fpsOffCompleted.getAndSet(0) / (slotMs / 1000.0)
+                            channelFPS.send(fpsSend.toString())
+                            r = channelR.receive() * timeslotSize / 1000
+                            Log.d("FPS", "FPSOff: $fpsSend")
+                            Log.d(
+                                "FrameScheduler",
+                                "TD=${frameScheduler.tdMs} TL=${frameScheduler.tlMs} offloadFrac=${frameScheduler.offloadFraction()}"
+                            )
+                            prev = SystemClock.uptimeMillis()
+                            sendsThisSlot = 0
+                        }
+                    }
                 }
             }
+
             writer.println("\n\n")
             writer.flush()
-
-            Log.d("Finished", "finished. close socket")
-            socket.close() // Release socket
-            while(channelImage.isEmpty == false) {
-                var queueImage = channelImage.receive() // Cleanup after experiment ends.
+            socket.close()
+            while (channelImage.isEmpty == false) {
+                channelImage.receive()
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -851,6 +882,11 @@ class PhotoActivity : BaseActivity() {
 
         // Initialization
         setFreq(listOf(cpu0.toInt(), cpu4.toInt(), gpu.toInt()))
+        frameScheduler.updateControl(
+            model.toInt(),
+            cpu0_list[cpu0.toInt()].toLong(),
+            gpu_list[gpu.toInt()].toLong()
+        )
         var observation = mutableListOf(0f)
         var thermalData = listOf("H")
         var measureResult = ""
@@ -876,6 +912,12 @@ class PhotoActivity : BaseActivity() {
         r = off_list[r.toInt()].toFloat()
         channelR.send(r.toInt())
         setFreq(listOf(cpu0.toInt(), cpu4.toInt(), gpu.toInt()))
+        frameScheduler.updateControl(
+            model.toInt(),
+            cpu0_list[cpu0.toInt()].toLong(),
+            gpu_list[gpu.toInt()].toLong()
+        )
+        frameScheduler.beginTimeslot()
 
         while(true){
             // Receive FPS and measure
@@ -1175,6 +1217,11 @@ class PhotoActivity : BaseActivity() {
             channelR.send(r.toInt())
             Log.d("Latency", "channel Send latency in measureCoroutine: ${SystemClock.uptimeMillis()-startSend}")
             setFreq(listOf(cpu0.toInt(), cpu4.toInt(), gpu.toInt()))
+            frameScheduler.updateControl(
+                model.toInt(),
+                cpu0_list[cpu0.toInt()].toLong(),
+                gpu_list[gpu.toInt()].toLong()
+            )
 
             // Training
             if (dqnAgent.getTrainBatchSize() >= dqnAgent.getExpectedBatchSize()) {

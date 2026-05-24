@@ -1,4 +1,8 @@
-# Created by virtualenv automatically
+# Python virtual environment
+venv/
+.venv/
+env/
+
 __pycache__/
 *.pyc
 *.pyo
