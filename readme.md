@@ -7,7 +7,7 @@
 [![TensorFlow Lite](https://img.shields.io/badge/AI-TensorFlow%20Lite-orange.svg)](https://www.tensorflow.org/lite)
 [![PyTorch](https://img.shields.io/badge/AI-PyTorch-red.svg)](https://pytorch.org/)
 
-This repository is the official implementation of "DualEngine: A Thermal-Aware Vision Inference Framework via Mobile and Cloud Co-Execution," submitted to IEEE INFOCOM 2026.
+This repository is the official implementation of "DualEngine: A Thermal-Aware Vision Inference Framework via Mobile and Cloud Co-Execution," published in IEEE SECON 2026.
 
 ##  Abstract
 
